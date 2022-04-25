@@ -11,6 +11,7 @@ import {
 
 import { RouterComponent, location } from "./routerComponent";
 import { Prompt } from "./prompt";
+import { handleUseParams } from "@pankod/refine-core";
 
 export type RefineRouteProps = Route & {
     layout?: boolean;
@@ -48,14 +49,29 @@ const RouterProvider: IReactRouterProvider = {
     useLocation: () => {
         const location = useLocation();
         return {
-            pathname: location.current.pathname,
-            search: location.current.searchStr,
+            pathname: location?.current.pathname,
+            search: location?.current.searchStr,
         };
     },
     useParams: () => {
-        const { params } = useMatch();
+        const match = useMatch();
+        if (!match) {
+            return {};
+        }
 
-        return params as any;
+        const pathname = useLocation();
+
+        const paramsString = `/${Object.values(match.params).join("/")}`;
+
+        return handleUseParams({
+            ...match.params,
+            resource:
+                Object.keys(match.params).length === 0
+                    ? pathname.current.pathname.substring(1)
+                    : pathname.current.pathname
+                          .substring(1)
+                          .replace(paramsString, ""),
+        });
     },
     Prompt,
     Link,

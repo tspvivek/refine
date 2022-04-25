@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import uniqBy from "lodash/uniqBy";
 import { QueryObserverResult, UseQueryOptions } from "react-query";
+import uniqBy from "lodash/uniqBy";
 import debounce from "lodash/debounce";
 
 import { useList, useMany } from "@hooks";
@@ -15,6 +15,7 @@ import {
     HttpError,
     MetaDataQuery,
     LiveModeProps,
+    BaseKey,
 } from "../../interfaces";
 
 export type UseSelectProps<TData, TError> = {
@@ -23,7 +24,7 @@ export type UseSelectProps<TData, TError> = {
     optionValue?: string;
     sort?: CrudSorting;
     filters?: CrudFilters;
-    defaultValue?: string | string[];
+    defaultValue?: BaseKey | BaseKey[];
     debounce?: number;
     queryOptions?: UseQueryOptions<GetListResponse<TData>, TError>;
     fetchSize?: number;
@@ -51,8 +52,6 @@ export const useSelect = <
     const [options, setOptions] = useState<Option[]>([]);
     const [selectedOptions, setSelectedOptions] = useState<Option[]>([]);
 
-    let { defaultValue = [] } = props;
-
     const {
         resource,
         sort,
@@ -62,10 +61,11 @@ export const useSelect = <
         debounce: debounceValue = 300,
         successNotification,
         errorNotification,
-        defaultValueQueryOptions,
+        defaultValueQueryOptions: defaultValueQueryOptionsFromProps,
         queryOptions,
         fetchSize,
         liveMode,
+        defaultValue = [],
         onLiveEvent,
         onSearch: onSearchFromProp,
         liveParams,
@@ -73,9 +73,9 @@ export const useSelect = <
         dataProviderName,
     } = props;
 
-    if (!Array.isArray(defaultValue)) {
-        defaultValue = [defaultValue];
-    }
+    const defaultValues = Array.isArray(defaultValue)
+        ? defaultValue
+        : [defaultValue];
 
     const defaultValueQueryOnSuccess = (data: GetManyResponse<TData>) => {
         setSelectedOptions(
@@ -86,11 +86,14 @@ export const useSelect = <
         );
     };
 
+    const defaultValueQueryOptions =
+        defaultValueQueryOptionsFromProps ?? (queryOptions as any);
+
     const defaultValueQueryResult = useMany<TData, TError>({
         resource,
-        ids: defaultValue,
+        ids: defaultValues,
         queryOptions: {
-            enabled: defaultValue.length > 0,
+            enabled: defaultValues.length > 0,
             ...defaultValueQueryOptions,
             onSuccess: (data) => {
                 defaultValueQueryOnSuccess(data);

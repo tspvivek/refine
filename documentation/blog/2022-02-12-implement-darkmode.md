@@ -28,7 +28,7 @@ Select the following options to complete the CLI wizard:
 Cloned remote source successfully.
 ✔ What will be the name of your app · tutorial
 ✔ Package manager: · npm
-✔ Do you want to using UI Framework?: · antd
+✔ Do you want to use an UI Framework?: · antd
 ✔ Do you want to customize theme?: · less
 ✔ Data Provider: · custom-json-rest-data-provider
 ✔ Auth Provider: · none
@@ -175,7 +175,7 @@ In App.tsx, adapt the file so it looks like this :
 ```tsx
 import { Refine, } from '@pankod/refine-core';
 import { notificationProvider } from '@pankod/refine-antd';
-import routerProvider from "@pankod/refine-react-router";
+import routerProvider from "@pankod/refine-react-router-v6";
 import "styles/antd.less";
 import dataProvider from "@pankod/refine-simple-rest";
 import { PostList, PostCreate, PostEdit, PostShow } from "pages/posts";

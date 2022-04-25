@@ -6,7 +6,7 @@ import {
     ErrorComponent,
 } from "@pankod/refine-antd";
 import { DataProvider, AuthHelper } from "@pankod/refine-strapi";
-import routerProvider from "@pankod/refine-react-router";
+import routerProvider from "@pankod/refine-react-router-v6";
 
 import axios from "axios";
 
@@ -35,9 +35,9 @@ const App: React.FC = () => {
                     Authorization: `Bearer ${data.jwt}`,
                 };
 
-                return Promise.resolve;
+                return Promise.resolve();
             }
-            return Promise.reject;
+            return Promise.reject();
         },
         logout: () => {
             localStorage.removeItem(TOKEN_KEY);

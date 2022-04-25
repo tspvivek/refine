@@ -7,8 +7,10 @@ import {
     useWarnAboutChange,
     UseFormProps as UseFormPropsCore,
     HttpError,
+    LiveModeProps,
+    BaseRecord,
+    BaseKey,
 } from "@pankod/refine-core";
-import { BaseRecord, LiveModeProps } from "@pankod/refine-core/dist/interfaces";
 
 import { useForm, UseFormProps, UseFormReturnType } from "../useForm";
 import { DeleteButtonProps } from "../../../components";
@@ -22,7 +24,7 @@ export type UseDrawerFormProps<
     TError extends HttpError = HttpError,
     TVariables = {},
 > = UseFormPropsCore<TData, TError, TVariables> &
-    UseFormProps &
+    UseFormProps<TData, TError, TVariables> &
     UseDrawerFormConfig &
     LiveModeProps;
 
@@ -34,7 +36,7 @@ export type UseDrawerFormReturnType<
     formProps: FormProps<TVariables> & {
         form: FormInstance<TVariables>;
     };
-    show: (id?: string) => void;
+    show: (id?: BaseKey) => void;
     close: () => void;
     drawerProps: DrawerProps;
     saveButtonProps: ButtonProps;
@@ -53,6 +55,7 @@ export type UseDrawerFormReturnType<
  *
  *
  */
+
 export const useDrawerForm = <
     TData extends BaseRecord = BaseRecord,
     TError extends HttpError = HttpError,
@@ -136,7 +139,7 @@ export const useDrawerForm = <
         setId?.(undefined);
     }, [warnWhen]);
 
-    const handleShow = useCallback((id?: string) => {
+    const handleShow = useCallback((id?: BaseKey) => {
         setId?.(id);
 
         setVisible(true);

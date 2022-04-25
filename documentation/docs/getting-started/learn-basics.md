@@ -18,8 +18,8 @@ This guide will help you learn and get information of basic **refine** concepts.
 
 **UI Framework Packages:**
 
--   `@pankod/refine-antd` - a fully featured [Ant Design](https://ant.design/) System UI Framework. Includes +20 Table, Form, Select, Menu, Layout, Notification and CRUD components and hooks.
--   `@pankod/refine-mui` (Coming soon!) - a fully featured [Material UI](https://mui.com/) Framework.
+-   `@pankod/refine-antd` - a fully featured [Ant Design](https://ant.design/) System UI Framework support. Includes +20 Table, Form, Select, Menu, Layout, Notification and CRUD components and hooks.
+-   `@pankod/refine-mui` (Coming soon!) - a fully featured [Material UI](https://mui.com/) Framework support.
 
 **[Data Provider](https://refine.dev/docs/core/providers/data-provider/) Packages:**
 
@@ -31,13 +31,15 @@ This guide will help you learn and get information of basic **refine** concepts.
 -   `@pankod/refine-strapi-graphql` - a fully featured [Strapi-GraphQL](https://github.com/strapi/strapi/tree/master/packages/plugins/graphql) Data Provider
 -   `@pankod/refine-supabase` - a fully featured [Supabase](https://github.com/supabase/supabase) Data Provider. Also supported Supabase Realtime feature.
 -   `@pankod/refine-hasura` - a fully featured [Hasura GraphQL](https://github.com/hasura/graphql-engine) Data Provider
+-   `@pankod/refine-nhost` - a fully featured [Nhost](https://github.com/nhost/nhost) Data Provider
 -   `@pankod/refine-appwrite` - a fully featured [Appwrite](https://github.com/appwrite/appwrite) Data Provider. Also supported Appwrite Realtime feature.
 -   `@pankod/refine-airtable` - a fully featured [Airtable](https://github.com/Airtable/airtable.js) Data Provider
 -   `@pankod/refine-altogic` - a fully featured [Altogic](https://github.com/altogic/altogic-js) Data Provider
 
 **[Router Provider](https://refine.dev/docs/core/providers/router-provider/) Packages**
 
--   `@pankod/refine-react-router` - Router Provider for [React Router(v5)](https://github.com/remix-run/react-router)
+-   `@pankod/refine-react-router-v6` - Router Provider for [React Router (v6)](https://reactrouter.com)
+-   `@pankod/refine-react-router` - Router Provider for [React Router (v5)](https://v5.reactrouter.com/)
 -   `@pankod/refine-nextjs-router` - Router Provider for [Next.js](https://nextjs.org/docs/api-reference/next/router#userouter)
 -   `@pankod/refine-react-location` - Router Provider for [React Location](https://github.com/tannerlinsley/react-location)
 

@@ -4,15 +4,18 @@ import { PlusSquareOutlined } from "@ant-design/icons";
 import {
     useCan,
     useNavigation,
-    useResourceWithRoute,
-    useRouterContext,
     useTranslate,
-    ResourceRouterParams,
+    BaseKey,
+    useResource,
 } from "@pankod/refine-core";
 
 export type CloneButtonProps = ButtonProps & {
+    /**
+     * @deprecated resourceName deprecated. Use resourceNameOrRouteName instead # https://github.com/pankod/refine/issues/1618
+     */
     resourceName?: string;
-    recordItemId?: string;
+    resourceNameOrRouteName?: string;
+    recordItemId?: BaseKey;
     hideText?: boolean;
     ignoreAccessControlProvider?: boolean;
 };
@@ -26,32 +29,23 @@ export type CloneButtonProps = ButtonProps & {
  */
 export const CloneButton: React.FC<CloneButtonProps> = ({
     resourceName: propResourceName,
+    resourceNameOrRouteName: propResourceNameOrRouteName,
     recordItemId,
     hideText = false,
     ignoreAccessControlProvider = false,
     children,
+    onClick,
     ...rest
 }) => {
-    const resourceWithRoute = useResourceWithRoute();
-
     const { clone } = useNavigation();
 
     const translate = useTranslate();
 
-    const { useParams } = useRouterContext();
-
-    const { resource: routeResourceName, id: idFromRoute } =
-        useParams<ResourceRouterParams>();
-
-    const resource = resourceWithRoute(routeResourceName);
-
-    const resourceName = propResourceName ?? resource.name;
-
-    const id = decodeURIComponent(recordItemId ?? idFromRoute);
-
-    const onButtonClick = () => {
-        clone(resourceName, id!);
-    };
+    const { id, resourceName, resource } = useResource({
+        resourceNameOrRouteName: propResourceNameOrRouteName,
+        recordItemId,
+        resourceName: propResourceName,
+    });
 
     const { data } = useCan({
         resource: resourceName,
@@ -74,7 +68,11 @@ export const CloneButton: React.FC<CloneButtonProps> = ({
 
     return (
         <Button
-            onClick={onButtonClick}
+            onClick={(e): void =>
+                onClick
+                    ? onClick(e)
+                    : clone(propResourceName ?? resource.route!, id!)
+            }
             icon={<PlusSquareOutlined />}
             disabled={data?.can === false}
             title={createButtonDisabledTitle()}

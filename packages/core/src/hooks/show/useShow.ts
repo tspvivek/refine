@@ -9,19 +9,19 @@ import {
     GetOneResponse,
     SuccessErrorNotification,
     MetaDataQuery,
-    LiveEvent,
     LiveModeProps,
+    BaseKey,
 } from "../../interfaces";
 
 export type useShowReturnType<TData extends BaseRecord = BaseRecord> = {
     queryResult: QueryObserverResult<GetOneResponse<TData>>;
-    showId?: string;
-    setShowId: React.Dispatch<React.SetStateAction<string | undefined>>;
+    showId?: BaseKey;
+    setShowId: React.Dispatch<React.SetStateAction<BaseKey | undefined>>;
 };
 
 export type useShowProps = {
     resource?: string;
-    id?: string;
+    id?: BaseKey;
     metaData?: MetaDataQuery;
     dataProviderName?: string;
 } & LiveModeProps &
@@ -49,12 +49,12 @@ export const useShow = <TData extends BaseRecord = BaseRecord>({
     const { resource: routeResourceName, id: idFromRoute } =
         useParams<ResourceRouterParams>();
 
-    const [showId, setShowId] = useState<string | undefined>(
-        id ??
-            (idFromRoute !== undefined
-                ? decodeURIComponent(idFromRoute)
-                : undefined),
-    );
+    const defaultId =
+        !resourceFromProp || resourceFromProp === routeResourceName
+            ? id ?? idFromRoute
+            : id;
+
+    const [showId, setShowId] = useState<BaseKey | undefined>(defaultId);
 
     const resourceWithRoute = useResourceWithRoute();
 

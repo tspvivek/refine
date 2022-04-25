@@ -4,6 +4,7 @@ import {
     GetOneResponse,
     HttpError,
     BaseRecord,
+    BaseKey,
     MetaDataQuery,
     LiveModeProps,
     OpenNotificationParams,
@@ -15,10 +16,11 @@ import {
     useHandleNotification,
     useDataProvider,
 } from "@hooks";
+import { queryKeys } from "@definitions";
 
 export type UseOneProps<TData, TError> = {
     resource: string;
-    id: string;
+    id: BaseKey;
     queryOptions?: UseQueryOptions<GetOneResponse<TData>, TError>;
     successNotification?: OpenNotificationParams | false;
     errorNotification?: OpenNotificationParams | false;
@@ -53,6 +55,7 @@ export const useOne = <
     dataProviderName,
 }: UseOneProps<TData, TError>): QueryObserverResult<GetOneResponse<TData>> => {
     const dataProvider = useDataProvider();
+    const queryKey = queryKeys(resource, dataProviderName, metaData);
 
     const { getOne } = dataProvider(dataProviderName);
     const translate = useTranslate();
@@ -63,14 +66,14 @@ export const useOne = <
         resource,
         types: ["*"],
         channel: `resources/${resource}`,
-        params: { ids: id ? [id.toString()] : [], ...liveParams },
+        params: { ids: id ? [id] : [], ...liveParams },
         enabled: queryOptions?.enabled,
         liveMode,
         onLiveEvent,
     });
 
     const queryResponse = useQuery<GetOneResponse<TData>, TError>(
-        [`resource/getOne/${resource}`, { id, ...metaData }],
+        queryKey.detail(id),
         () => getOne<TData>({ resource, id, metaData }),
         {
             ...queryOptions,

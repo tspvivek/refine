@@ -32,7 +32,7 @@ Can you imagine what a development environment would be like where we provided a
 
 ### Briefly Refine
 
-A React-based <u>headless</u> framework for building data-intensive applications in no time.
+A React-based <u>headless</u> framework for building internal tools, rapidly.
 
 #### What gives us Refine?
 
@@ -57,6 +57,7 @@ The word headless is underlined above. So Refine drop you into UI heaven, meanwh
 - Strapi GraphQL
 - Supabase
 - Hasura
+- Nhost
 - Appwrite
 - Firebase
 - Directus

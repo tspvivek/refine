@@ -1,7 +1,7 @@
 import { useContext, useEffect } from "react";
 import { useQueryClient } from "react-query";
-import { useCacheQueries } from "@hooks";
 import {
+    BaseKey,
     ILiveContext,
     IRefineContext,
     LiveEvent,
@@ -9,11 +9,12 @@ import {
 } from "../../../interfaces";
 import { LiveContext } from "@contexts/live";
 import { RefineContext } from "@contexts/refine";
+import { queryKeys } from "@definitions";
 
 export type UseResourceSubscriptionProps = {
     channel: string;
     params?: {
-        ids?: string[];
+        ids?: BaseKey[];
         [key: string]: any;
     };
     types: LiveEvent["type"][];
@@ -35,7 +36,8 @@ export const useResourceSubscription = ({
     onLiveEvent,
 }: UseResourceSubscriptionProps): void => {
     const queryClient = useQueryClient();
-    const getAllQueries = useCacheQueries();
+    const queryKey = queryKeys(resource);
+
     const liveDataContext = useContext<ILiveContext>(LiveContext);
     const {
         liveMode: liveModeFromContext,
@@ -54,9 +56,7 @@ export const useResourceSubscription = ({
                 types,
                 callback: (event) => {
                     if (liveMode === "auto") {
-                        getAllQueries(resource).forEach((query) => {
-                            queryClient.invalidateQueries(query.queryKey);
-                        });
+                        queryClient.invalidateQueries(queryKey.resourceAll);
                     }
 
                     onLiveEvent?.(event);

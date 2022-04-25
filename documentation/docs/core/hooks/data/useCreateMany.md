@@ -37,7 +37,7 @@ Let's say that we have a resource named `categories`.
 
 ```tsx 
 type CategoryMutationResult = {
-    id: string;
+    id: number;
     title: string;
 };
 
@@ -124,6 +124,7 @@ Variables passed to `mutate` must have these types.
 | errorNotification                                                                                   | Unsuccessful Mutation notification                                                                 | [`SuccessErrorNotification`](/core/interfaces.md#successerrornotification) | "There was an error creating `resource` (status code: `statusCode`)" |
 | metaData                                                                                            | Metadata query for `dataProvider`                                                                  | [`MetaDataQuery`](/core/interfaces.md#metadataquery)                       | {}                                                                   |
 | dataProviderName                                                                                    | If there is more than one `dataProvider`, you should use the `dataProviderName` that you will use. | `string`                                                                   | `default`                                                            |
+| invalidates                                                                                        | You can use it to manage the invalidations that will occur at the end of the mutation.           | `all`, `resourceAll`, `list`, `many`, `detail`, `false`                    | `["list", "many"]`                                                   |
 
 ### Type Parameters
 

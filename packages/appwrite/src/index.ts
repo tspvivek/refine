@@ -1,27 +1,14 @@
-import { DataProvider, LiveProvider, LiveEvent } from "@pankod/refine-core";
-import { CrudFilters, CrudSorting } from "@pankod/refine-core/dist/interfaces";
-import { Appwrite } from "appwrite";
+import {
+    DataProvider,
+    LiveProvider,
+    LiveEvent,
+    CrudFilters,
+    CrudSorting,
+    CrudFilter,
+} from "@pankod/refine-core";
+import { Appwrite, Query } from "appwrite";
 
 export * from "appwrite";
-
-const operators = {
-    eq: "=",
-    ne: "!=",
-    lt: "<",
-    gt: ">",
-    lte: "<=",
-    gte: ">=",
-    in: undefined,
-    nin: undefined,
-    contains: undefined,
-    containss: undefined,
-    ncontains: undefined,
-    ncontainss: undefined,
-    null: undefined,
-    between: undefined,
-    nbetween: undefined,
-    nnull: undefined,
-};
 
 const appwriteEventToRefineEvent = {
     "database.documents.create": "created",
@@ -47,9 +34,30 @@ type GetAppwriteFiltersType = {
 
 type GetAppwriteSortingType = {
     (filters?: CrudSorting): {
-        orderField?: string;
-        orderType?: string;
+        orderField?: string[];
+        orderType?: string[];
     };
+};
+
+const generateFilter = (filter: CrudFilter) => {
+    switch (filter.operator) {
+        case "eq":
+            return Query.equal(filter.field, filter.value);
+        case "ne":
+            return Query.notEqual(filter.field, filter.value);
+        case "gt":
+            return Query.greater(filter.field, filter.value);
+        case "gte":
+            return Query.greaterEqual(filter.field, filter.value);
+        case "lt":
+            return Query.lesser(filter.field, filter.value);
+        case "lte":
+            return Query.lesserEqual(filter.field, filter.value);
+        case "contains":
+            return Query.search(filter.field, `%${filter.value}%`);
+        default:
+            throw new Error(`Operator ${filter.operator} is not supported`);
+    }
 };
 
 export const getAppwriteFilters: GetAppwriteFiltersType = (filters) => {
@@ -60,56 +68,52 @@ export const getAppwriteFilters: GetAppwriteFiltersType = (filters) => {
     const appwriteFilters: string[] = [];
 
     for (const filter of filters) {
-        const operator = operators[filter.operator];
-        const filterField = filter.field === "id" ? "$id" : filter.field;
+        if (filter.operator !== "or") {
+            const filterField = filter.field === "id" ? "$id" : filter.field;
 
-        if (!operator) {
-            throw new Error(`Operator ${filter.operator} is not supported`);
+            appwriteFilters.push(
+                generateFilter({
+                    ...filter,
+                    field: filterField,
+                }),
+            );
         }
-
-        appwriteFilters.push(`${filterField}${operator}${filter.value}`);
     }
 
     return appwriteFilters;
 };
 
-export const getAppwriteSorting: GetAppwriteSortingType = (sorting) => {
-    if (!sorting) {
-        return {
-            orderField: undefined,
-            orderType: undefined,
-        };
-    }
-
-    if (sorting.length > 1) {
-        throw new Error(
-            "Appwrite data provider does not support multiple sortings",
-        );
-    }
-
-    const orderField = sorting?.[0]?.field;
-    const orderType = sorting?.[0]?.order.toUpperCase();
-
-    return {
-        orderField: orderField === "id" ? "$id" : orderField,
-        orderType,
+export const getAppwriteSorting: GetAppwriteSortingType = (sort) => {
+    const _sort: { orderField: string[]; orderType: string[] } = {
+        orderField: [],
+        orderType: [],
     };
+    if (sort) {
+        sort.map((item) => {
+            _sort.orderField.push(item.field);
+            _sort.orderType.push(item.order.toUpperCase());
+        });
+    }
+    return _sort;
 };
 
 export const dataProvider = (appwriteClient: Appwrite): DataProvider => {
     return {
+        //TODO: Fix typing
         getList: async ({ resource, pagination, filters, sort }) => {
             const current = pagination?.current ?? 1;
             const pageSize = pagination?.pageSize ?? 10;
             const appwriteFilters = getAppwriteFilters(filters);
             const { orderField, orderType } = getAppwriteSorting(sort);
 
-            const { sum: total, documents: data } =
-                await appwriteClient.database.listDocuments(
+            const { total: total, documents: data } =
+                await appwriteClient.database.listDocuments<any>(
                     resource,
                     appwriteFilters,
                     pageSize,
                     (current - 1) * pageSize,
+                    undefined,
+                    undefined,
                     orderField,
                     orderType,
                 );
@@ -118,13 +122,16 @@ export const dataProvider = (appwriteClient: Appwrite): DataProvider => {
                 data: data.map(({ $id, ...restData }: { $id: string }) => ({
                     id: $id,
                     ...restData,
-                })),
+                })) as any,
                 total,
             };
         },
         getOne: async ({ resource, id }) => {
             const { $id, ...restData } =
-                await appwriteClient.database.getDocument(resource, id);
+                await appwriteClient.database.getDocument(
+                    resource,
+                    id.toString(),
+                );
 
             return {
                 data: {
@@ -137,7 +144,7 @@ export const dataProvider = (appwriteClient: Appwrite): DataProvider => {
             const { $id, ...restData } =
                 await appwriteClient.database.updateDocument(
                     resource,
-                    id,
+                    id.toString(),
                     variables as any,
                     metaData?.readPermissions ?? ["role:all"],
                     metaData?.writePermissions ?? ["role:all"],
@@ -154,6 +161,7 @@ export const dataProvider = (appwriteClient: Appwrite): DataProvider => {
             const { $id, ...restData } =
                 await appwriteClient.database.createDocument(
                     resource,
+                    metaData?.documentId ?? "unique()",
                     variables as unknown as object,
                     metaData?.readPermissions ?? ["role:all"],
                     metaData?.writePermissions ?? ["role:all"],
@@ -171,6 +179,7 @@ export const dataProvider = (appwriteClient: Appwrite): DataProvider => {
                 variables.map((document) =>
                     appwriteClient.database.createDocument<any>(
                         resource,
+                        metaData?.documentId ?? "unique()",
                         document as unknown as object,
                         metaData?.readPermissions ?? ["role:all"],
                         metaData?.writePermissions ?? ["role:all"],
@@ -186,7 +195,10 @@ export const dataProvider = (appwriteClient: Appwrite): DataProvider => {
             } as any;
         },
         deleteOne: async ({ resource, id }) => {
-            await appwriteClient.database.deleteDocument(resource, id);
+            await appwriteClient.database.deleteDocument(
+                resource,
+                id.toString(),
+            );
 
             return {
                 data: { id },
@@ -195,7 +207,10 @@ export const dataProvider = (appwriteClient: Appwrite): DataProvider => {
         deleteMany: async ({ resource, ids }) => {
             await Promise.all(
                 ids.map((id) =>
-                    appwriteClient.database.deleteDocument(resource, id),
+                    appwriteClient.database.deleteDocument(
+                        resource,
+                        id.toString(),
+                    ),
                 ),
             );
 
@@ -208,7 +223,10 @@ export const dataProvider = (appwriteClient: Appwrite): DataProvider => {
         getMany: async ({ resource, ids }) => {
             const data = await Promise.all(
                 ids.map((id) =>
-                    appwriteClient.database.getDocument<any>(resource, id),
+                    appwriteClient.database.getDocument<any>(
+                        resource,
+                        id.toString(),
+                    ),
                 ),
             );
 
@@ -224,7 +242,7 @@ export const dataProvider = (appwriteClient: Appwrite): DataProvider => {
                 ids.map((id) =>
                     appwriteClient.database.updateDocument<any>(
                         resource,
-                        id,
+                        id.toString(),
                         variables as unknown as object,
                         metaData?.readPermissions ?? ["role:all"],
                         metaData?.writePermissions ?? ["role:all"],

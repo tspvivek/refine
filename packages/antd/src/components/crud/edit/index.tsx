@@ -17,6 +17,7 @@ import {
     userFriendlyResourceName,
     MutationMode,
     ResourceRouterParams,
+    BaseKey,
 } from "@pankod/refine-core";
 
 import {
@@ -32,7 +33,7 @@ export interface EditProps {
     actionButtons?: React.ReactNode;
     saveButtonProps?: ButtonProps;
     mutationMode?: MutationMode;
-    recordItemId?: string;
+    recordItemId?: BaseKey;
     pageHeaderProps?: PageHeaderProps;
     canDelete?: boolean;
     deleteButtonProps?: DeleteButtonProps;
@@ -79,6 +80,8 @@ export const Edit: React.FC<EditProps> = ({
     const isDeleteButtonVisible =
         canDelete ?? (resource.canDelete || deleteButtonProps);
 
+    const id = recordItemId ?? idFromRoute;
+
     return (
         <PageHeader
             ghost={false}
@@ -98,14 +101,12 @@ export const Edit: React.FC<EditProps> = ({
                     {!recordItemId && (
                         <ListButton
                             data-testid="edit-list-button"
-                            resourceName={resource.name}
+                            resourceNameOrRouteName={resource.route}
                         />
                     )}
                     <RefreshButton
-                        resourceName={resource.name}
-                        recordItemId={
-                            recordItemId ?? encodeURIComponent(idFromRoute)
-                        }
+                        resourceNameOrRouteName={resource.route}
+                        recordItemId={id}
                     />
                 </Space>
             }

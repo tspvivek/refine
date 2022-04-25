@@ -3,27 +3,35 @@ import { Button, ButtonProps, Popconfirm } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import {
     useDelete,
-    useResourceWithRoute,
     useTranslate,
     useMutationMode,
-    useRouterContext,
     useCan,
-    ResourceRouterParams,
     MutationMode,
     SuccessErrorNotification,
     MetaDataQuery,
+    BaseKey,
+    DeleteOneResponse,
+    IQueryKeys,
+    useResource,
 } from "@pankod/refine-core";
-import { DeleteOneResponse } from "@pankod/refine-core/dist/interfaces";
 
 export type DeleteButtonProps = ButtonProps & {
+    /**
+     * @deprecated resourceName deprecated. Use resourceNameOrRouteName instead # https://github.com/pankod/refine/issues/1618
+     */
     resourceName?: string;
-    recordItemId?: string;
+    resourceNameOrRouteName?: string;
+    recordItemId?: BaseKey;
     onSuccess?: (value: DeleteOneResponse) => void;
     mutationMode?: MutationMode;
     hideText?: boolean;
     metaData?: MetaDataQuery;
     dataProviderName?: string;
     ignoreAccessControlProvider?: boolean;
+    confirmTitle?: string;
+    confirmOkText?: string;
+    confirmCancelText?: string;
+    invalidates?: Array<keyof IQueryKeys>;
 } & SuccessErrorNotification;
 
 /**
@@ -34,6 +42,7 @@ export type DeleteButtonProps = ButtonProps & {
  */
 export const DeleteButton: React.FC<DeleteButtonProps> = ({
     resourceName: propResourceName,
+    resourceNameOrRouteName: propResourceNameOrRouteName,
     recordItemId,
     onSuccess,
     mutationMode: mutationModeProp,
@@ -44,31 +53,27 @@ export const DeleteButton: React.FC<DeleteButtonProps> = ({
     ignoreAccessControlProvider = false,
     metaData,
     dataProviderName,
+    confirmTitle,
+    confirmOkText,
+    confirmCancelText,
+    invalidates,
     ...rest
 }) => {
-    const resourceWithRoute = useResourceWithRoute();
-
     const translate = useTranslate();
+
+    const { resourceName, id } = useResource({
+        resourceName: propResourceName,
+        recordItemId,
+    });
 
     const { mutationMode: mutationModeContext } = useMutationMode();
 
     const mutationMode = mutationModeProp ?? mutationModeContext;
 
-    const { useParams } = useRouterContext();
-
-    const { resource: routeResourceName, id: idFromRoute } =
-        useParams<ResourceRouterParams>();
-
-    const resourceName = propResourceName ?? routeResourceName;
-
-    const resource = resourceWithRoute(resourceName);
-
     const { mutate, isLoading, variables } = useDelete();
 
-    const id = decodeURIComponent(recordItemId ?? idFromRoute);
-
     const { data } = useCan({
-        resource: resource.name,
+        resource: resourceName,
         action: "delete",
         params: { id },
         queryOptions: {
@@ -79,21 +84,26 @@ export const DeleteButton: React.FC<DeleteButtonProps> = ({
     return (
         <Popconfirm
             key="delete"
-            okText={translate("buttons.delete", "Delete")}
-            cancelText={translate("buttons.cancel", "Cancel")}
+            okText={confirmOkText ?? translate("buttons.delete", "Delete")}
+            cancelText={
+                confirmCancelText ?? translate("buttons.cancel", "Cancel")
+            }
             okType="danger"
-            title={translate("buttons.confirm", "Are you sure?")}
+            title={
+                confirmTitle ?? translate("buttons.confirm", "Are you sure?")
+            }
             okButtonProps={{ disabled: isLoading }}
             onConfirm={(): void => {
                 mutate(
                     {
-                        id: id!,
-                        resource: resource.name,
+                        id: id || "",
+                        resource: resourceName,
                         mutationMode,
                         successNotification,
                         errorNotification,
                         metaData,
                         dataProviderName,
+                        invalidates,
                     },
                     {
                         onSuccess: (value) => {

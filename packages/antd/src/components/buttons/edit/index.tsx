@@ -4,15 +4,18 @@ import { EditOutlined } from "@ant-design/icons";
 import {
     useCan,
     useNavigation,
-    useResourceWithRoute,
-    useRouterContext,
     useTranslate,
-    ResourceRouterParams,
+    BaseKey,
+    useResource,
 } from "@pankod/refine-core";
 
 export type EditButtonProps = ButtonProps & {
+    /**
+     * @deprecated resourceName deprecated. Use resourceNameOrRouteName instead # https://github.com/pankod/refine/issues/1618
+     */
     resourceName?: string;
-    recordItemId?: string;
+    resourceNameOrRouteName?: string;
+    recordItemId?: BaseKey;
     hideText?: boolean;
     ignoreAccessControlProvider?: boolean;
 };
@@ -26,28 +29,23 @@ export type EditButtonProps = ButtonProps & {
  */
 export const EditButton: React.FC<EditButtonProps> = ({
     resourceName: propResourceName,
+    resourceNameOrRouteName: propResourceNameOrRouteName,
     recordItemId,
     hideText = false,
     ignoreAccessControlProvider = false,
     children,
+    onClick,
     ...rest
 }) => {
-    const resourceWithRoute = useResourceWithRoute();
-
     const translate = useTranslate();
-
-    const { useParams } = useRouterContext();
-
-    const { resource: routeResourceName, id: idFromRoute } =
-        useParams<ResourceRouterParams>();
-
-    const resource = resourceWithRoute(routeResourceName);
-
-    const resourceName = propResourceName ?? resource.name;
 
     const { edit } = useNavigation();
 
-    const id = decodeURIComponent(recordItemId ?? idFromRoute);
+    const { resourceName, id, resource } = useResource({
+        resourceName: propResourceName,
+        resourceNameOrRouteName: propResourceNameOrRouteName,
+        recordItemId,
+    });
 
     const { data } = useCan({
         resource: resourceName,
@@ -70,9 +68,11 @@ export const EditButton: React.FC<EditButtonProps> = ({
 
     return (
         <Button
-            onClick={(): void => {
-                edit(resourceName, id!);
-            }}
+            onClick={(e): void =>
+                onClick
+                    ? onClick(e)
+                    : edit(propResourceName ?? resource.route!, id!)
+            }
             icon={<EditOutlined />}
             disabled={data?.can === false}
             title={createButtonDisabledTitle()}

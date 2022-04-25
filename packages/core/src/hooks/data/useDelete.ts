@@ -1,48 +1,53 @@
 import { useQueryClient, useMutation, UseMutationResult } from "react-query";
+import pluralize from "pluralize";
 
 import {
     useMutationMode,
     useCancelNotification,
-    useCacheQueries,
     useTranslate,
     useCheckError,
     usePublish,
     useHandleNotification,
     useDataProvider,
+    useInvalidate,
 } from "@hooks";
 import { ActionTypes } from "@contexts/undoableQueue";
-import pluralize from "pluralize";
 import {
     DeleteOneResponse,
     MutationMode,
-    QueryResponse,
-    Context as DeleteContext,
+    PrevContext as DeleteContext,
     BaseRecord,
-    ContextQuery,
+    BaseKey,
     HttpError,
     GetListResponse,
     SuccessErrorNotification,
     MetaDataQuery,
+    PreviousQuery,
+    IQueryKeys,
 } from "../../interfaces";
+import { queryKeys } from "@definitions/helpers";
 
-type DeleteParams = {
-    id: string;
+export type DeleteParams<TVariables> = {
+    id: BaseKey;
     resource: string;
     mutationMode?: MutationMode;
     undoableTimeout?: number;
     onCancel?: (cancelMutation: () => void) => void;
     metaData?: MetaDataQuery;
     dataProviderName?: string;
+    invalidates?: Array<keyof IQueryKeys>;
+    values?: TVariables;
 } & SuccessErrorNotification;
 
-type UseDeleteReturnType<
+export type UseDeleteReturnType<
     TData extends BaseRecord = BaseRecord,
     TError = HttpError,
+    TVariables = {},
 > = UseMutationResult<
     DeleteOneResponse<TData>,
     TError,
-    DeleteParams,
-    DeleteContext
+    DeleteParams<TVariables>,
+    DeleteContext<TData>
 >;
 
 /**
@@ -60,7 +65,8 @@ type UseDeleteReturnType<
 export const useDelete = <
     TData extends BaseRecord = BaseRecord,
     TError extends HttpError = HttpError,
->(): UseDeleteReturnType<TData, TError> => {
+    TVariables = {},
+>(): UseDeleteReturnType<TData, TError, TVariables> => {
     const { mutate: checkError } = useCheckError();
     const dataProvider = useDataProvider();
 
@@ -75,14 +81,13 @@ export const useDelete = <
     const translate = useTranslate();
     const publish = usePublish();
     const handleNotification = useHandleNotification();
-
-    const cacheQueries = useCacheQueries();
+    const invalidateStore = useInvalidate();
 
     const mutation = useMutation<
         DeleteOneResponse<TData>,
         TError,
-        DeleteParams,
-        DeleteContext
+        DeleteParams<TVariables>,
+        DeleteContext<TData>
     >(
         ({
             id,
@@ -92,6 +97,7 @@ export const useDelete = <
             onCancel,
             metaData,
             dataProviderName,
+            values,
         }) => {
             const mutationModePropOrContext =
                 mutationMode ?? mutationModeContext;
@@ -104,6 +110,7 @@ export const useDelete = <
                     resource,
                     id,
                     metaData,
+                    variables: values,
                 });
             }
 
@@ -111,7 +118,12 @@ export const useDelete = <
                 (resolve, reject) => {
                     const doMutation = () => {
                         dataProvider(dataProviderName)
-                            .deleteOne<TData>({ resource, id, metaData })
+                            .deleteOne<TData>({
+                                resource,
+                                id,
+                                metaData,
+                                variables: values,
+                            })
                             .then((result) => resolve(result))
                             .catch((err) => reject(err));
                     };
@@ -140,68 +152,142 @@ export const useDelete = <
             return deletePromise;
         },
         {
-            onMutate: async ({ id, resource, mutationMode }) => {
-                const previousQueries: ContextQuery[] = [];
-
-                const allQueries = cacheQueries(resource, id);
+            onMutate: async ({
+                id,
+                resource,
+                mutationMode,
+                dataProviderName,
+            }) => {
+                const queryKey = queryKeys(resource, dataProviderName);
 
                 const mutationModePropOrContext =
                     mutationMode ?? mutationModeContext;
 
-                for (const queryItem of allQueries) {
-                    const { queryKey } = queryItem;
-                    await queryClient.cancelQueries(queryKey, undefined, {
+                await queryClient.cancelQueries(
+                    queryKey.resourceAll,
+                    undefined,
+                    {
                         silent: true,
-                    });
+                    },
+                );
 
-                    const previousQuery =
-                        queryClient.getQueryData<QueryResponse<TData>>(
-                            queryKey,
-                        );
+                const previousQueries: PreviousQuery<TData>[] =
+                    queryClient.getQueriesData(queryKey.resourceAll);
 
-                    if (!(mutationModePropOrContext === "pessimistic")) {
-                        if (previousQuery) {
-                            previousQueries.push({
-                                query: previousQuery,
-                                queryKey,
-                            });
-
-                            if (
-                                queryKey.includes(`resource/list/${resource}`)
-                            ) {
-                                const { data, total } =
-                                    previousQuery as GetListResponse<TData>;
-
-                                queryClient.setQueryData(queryKey, {
-                                    ...previousQuery,
-                                    data: (data ?? []).filter(
-                                        (record: TData) =>
-                                            !(
-                                                record.id?.toString() ===
-                                                id.toString()
-                                            ),
-                                    ),
-                                    total: total - 1,
-                                });
-                            } else {
-                                queryClient.removeQueries(queryKey);
+                if (!(mutationModePropOrContext === "pessimistic")) {
+                    // Set the previous queries to the new ones:
+                    queryClient.setQueriesData(
+                        queryKey.list(),
+                        (previous?: GetListResponse<TData> | null) => {
+                            if (!previous) {
+                                return null;
                             }
-                        }
-                    }
+                            const data = previous.data.filter(
+                                (record: TData) =>
+                                    record.id?.toString() !== id.toString(),
+                            );
+
+                            return {
+                                data,
+                                total: previous.total - 1,
+                            };
+                        },
+                    );
+
+                    queryClient.setQueriesData(
+                        queryKey.many(),
+                        (previous?: GetListResponse<TData> | null) => {
+                            if (!previous) {
+                                return null;
+                            }
+                            const data = previous.data.filter(
+                                (record: TData) => {
+                                    return (
+                                        record.id?.toString() !== id?.toString()
+                                    );
+                                },
+                            );
+
+                            return {
+                                ...previous,
+                                data,
+                            };
+                        },
+                    );
                 }
 
                 return {
-                    previousQueries: previousQueries,
+                    previousQueries,
+                    queryKey,
                 };
+            },
+            onSettled: (
+                _data,
+                _error,
+                {
+                    id,
+                    resource,
+                    dataProviderName,
+                    invalidates = ["list", "many"],
+                },
+            ) => {
+                // invalidate the cache for the list and many queries:
+
+                invalidateStore({
+                    resource,
+                    dataProviderName,
+                    invalidates,
+                });
+
+                notificationDispatch({
+                    type: ActionTypes.REMOVE,
+                    payload: { id, resource },
+                });
+            },
+            onSuccess: (
+                _data,
+                { id, resource, successNotification },
+                context,
+            ) => {
+                const resourceSingular = pluralize.singular(resource);
+
+                // Remove the queries from the cache:
+                queryClient.removeQueries(context.queryKey.detail(id));
+
+                handleNotification(successNotification, {
+                    key: `${id}-${resource}-notification`,
+                    description: translate("notifications.success", "Success"),
+                    message: translate(
+                        "notifications.deleteSuccess",
+                        {
+                            resource: translate(
+                                `${resource}.${resource}`,
+                                resourceSingular,
+                            ),
+                        },
+                        `Successfully deleted a ${resourceSingular}`,
+                    ),
+                    type: "success",
+                });
+
+                publish?.({
+                    channel: `resources/${resource}`,
+                    type: "deleted",
+                    payload: {
+                        ids: id ? [id] : [],
+                    },
+                    date: new Date(),
+                });
             },
             onError: (
                 err: TError,
                 { id, resource, errorNotification },
                 context,
             ) => {
+                // set back the queries to the context:
                 if (context) {
                     for (const query of context.previousQueries) {
-                        queryClient.setQueryData(query.queryKey, query.query);
+                        queryClient.setQueryData(query[0], query[1]);
                     }
                 }
 
@@ -224,58 +310,6 @@ export const useDelete = <
                         type: "error",
                     });
                 }
-            },
-            onSuccess: (_data, { id, resource, successNotification }) => {
-                const resourceSingular = pluralize.singular(resource);
-
-                const allQueries = cacheQueries(resource, id);
-                for (const query of allQueries) {
-                    if (
-                        query.queryKey.includes(`resource/getOne/${resource}`)
-                    ) {
-                        queryClient.invalidateQueries(query.queryKey);
-                    }
-                }
-
-                handleNotification(successNotification, {
-                    key: `${id}-${resource}-notification`,
-                    description: translate("notifications.success", "Success"),
-                    message: translate(
-                        "notifications.deleteSuccess",
-                        {
-                            resource: translate(
-                                `${resource}.${resource}`,
-                                resourceSingular,
-                            ),
-                        },
-                        `Successfully deleted a ${resourceSingular}`,
-                    ),
-                    type: "success",
-                });
-
-                publish?.({
-                    channel: `resources/${resource}`,
-                    type: "deleted",
-                    payload: {
-                        ids: id ? [id.toString()] : [],
-                    },
-                    date: new Date(),
-                });
-            },
-            onSettled: (_data, _error, { id, resource }) => {
-                const allQueries = cacheQueries(resource, id);
-                for (const query of allQueries) {
-                    if (
-                        !query.queryKey.includes(`resource/getOne/${resource}`)
-                    ) {
-                        queryClient.invalidateQueries(query.queryKey);
-                    }
-                }
-
-                notificationDispatch({
-                    type: ActionTypes.REMOVE,
-                    payload: { id, resource },
-                });
             },
         },
     );

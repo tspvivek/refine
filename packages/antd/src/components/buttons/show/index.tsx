@@ -5,15 +5,18 @@ import { EyeOutlined } from "@ant-design/icons";
 import {
     useCan,
     useNavigation,
-    useResourceWithRoute,
-    useRouterContext,
     useTranslate,
-    ResourceRouterParams,
+    BaseKey,
+    useResource,
 } from "@pankod/refine-core";
 
 export type ShowButtonProps = ButtonProps & {
+    /**
+     * @deprecated resourceName deprecated. Use resourceNameOrRouteName instead # https://github.com/pankod/refine/issues/1618
+     */
     resourceName?: string;
-    recordItemId?: string;
+    resourceNameOrRouteName?: string;
+    recordItemId?: BaseKey;
     hideText?: boolean;
     ignoreAccessControlProvider?: boolean;
 };
@@ -27,28 +30,23 @@ export type ShowButtonProps = ButtonProps & {
  */
 export const ShowButton: React.FC<ShowButtonProps> = ({
     resourceName: propResourceName,
+    resourceNameOrRouteName: propResourceNameOrRouteName,
     recordItemId,
     hideText = false,
     ignoreAccessControlProvider = false,
     children,
+    onClick,
     ...rest
 }) => {
-    const resourceWithRoute = useResourceWithRoute();
-
     const { show } = useNavigation();
 
     const translate = useTranslate();
 
-    const { useParams } = useRouterContext();
-
-    const { resource: routeResourceName, id: idFromRoute } =
-        useParams<ResourceRouterParams>();
-
-    const resource = resourceWithRoute(routeResourceName);
-
-    const resourceName = propResourceName ?? resource.name;
-
-    const id = decodeURIComponent(recordItemId ?? idFromRoute);
+    const { resourceName, id, resource } = useResource({
+        resourceName: propResourceName,
+        resourceNameOrRouteName: propResourceNameOrRouteName,
+        recordItemId,
+    });
 
     const { data } = useCan({
         resource: resourceName,
@@ -71,7 +69,11 @@ export const ShowButton: React.FC<ShowButtonProps> = ({
 
     return (
         <Button
-            onClick={(): void => show(resourceName, id!)}
+            onClick={(e): void =>
+                onClick
+                    ? onClick(e)
+                    : show(propResourceName ?? resource.route!, id!)
+            }
             icon={<EyeOutlined />}
             disabled={data?.can === false}
             title={createButtonDisabledTitle()}

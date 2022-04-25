@@ -5,7 +5,7 @@ import {
     ErrorComponent,
 } from "@pankod/refine-antd";
 import dataProvider from "@pankod/refine-simple-rest";
-import routerProvider from "@pankod/refine-react-router";
+import routerProvider from "@pankod/refine-react-router-v6";
 
 import { useAuth0 } from "@auth0/auth0-react";
 import axios from "axios";
@@ -18,14 +18,8 @@ import { Login } from "pages/login";
 const API_URL = "https://api.fake-rest.refine.dev";
 
 const App: React.FC = () => {
-    const {
-        isLoading,
-        loginWithRedirect,
-        isAuthenticated,
-        user,
-        logout,
-        getIdTokenClaims,
-    } = useAuth0();
+    const { isLoading, isAuthenticated, user, logout, getIdTokenClaims } =
+        useAuth0();
 
     if (isLoading) {
         return <span>loading...</span>;
@@ -33,7 +27,7 @@ const App: React.FC = () => {
 
     const authProvider: AuthProvider = {
         login: () => {
-            return Promise.resolve({});
+            return Promise.resolve();
         },
         logout: () => {
             logout({ returnTo: window.location.origin });

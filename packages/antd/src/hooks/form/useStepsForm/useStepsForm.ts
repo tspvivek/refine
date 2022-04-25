@@ -6,11 +6,11 @@ import {
 import {
     HttpError,
     UseFormProps as UseFormPropsCore,
+    BaseRecord,
 } from "@pankod/refine-core";
 
 import { useForm, UseFormProps, UseFormReturnType } from "../useForm";
-import { BaseRecord } from "@pankod/refine-core/dist/interfaces";
-import { useStepsFormFromSFReturnType } from "../../../../types/sunflower";
+import { useStepsFormFromSFReturnType } from "../../../types/sunflower";
 
 export type useStepsFormReturnType<
     TData extends BaseRecord = BaseRecord,
@@ -24,7 +24,7 @@ export type useStepsFormProps<
     TError extends HttpError = HttpError,
     TVariables = {},
 > = UseFormPropsCore<TData, TError, TVariables> &
-    UseFormProps &
+    UseFormProps<TData, TError, TVariables> &
     UseStepsFormConfig;
 
 /**

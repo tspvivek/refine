@@ -48,7 +48,7 @@ const { mutate } = useDeleteMany();
 
 mutate({
     resource: "categories",
-    ids: ["2", "3"],
+    ids: [2, 3],
 });
 ```
 
@@ -87,8 +87,9 @@ Values passed to `mutate` must have these types.
 
 ```tsx
 {
-    ids: string[];
+    ids: BaseKey[];
     resource: string;
+    values: TVariables = {};
     mutationMode?: MutationMode;
     undoableTimeout?: number;
     onCancel?: (cancelMutation: () => void) => void;
@@ -108,7 +109,7 @@ const { mutate } = useDeleteMany();
 
 mutate({
     resource: "categories",
-    ids: ["2", "3"],
+    ids: [2, 3],
     // highlight-next-line
     mutationMode: "optimistic",
 });
@@ -141,7 +142,7 @@ const { mutate } = useDeleteMany();
 
 mutate({
     resource: "categories",
-    ids: ["1", "2"],
+    ids: [1, 2],
     mutationMode: "undoable",
     // highlight-start
     undoableTimeout: 7500,
@@ -162,7 +163,7 @@ After 7.5 seconds the mutation will be executed. The mutation can be cancelled w
 | Property                                                                                            | Description                                                                                        | Type                                                                       | Default                                                      |
 | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------ |
 | <div className="required-block"><div>resource</div> <div className=" required">Required</div></div> | Resource name for API data interactions                                                            | `string`                                                                   |                                                              |
-| ids <div className=" required">Required</div>                                                       | ids for mutation function                                                                          | `string[]`                                                                 |                                                              |
+| ids <div className=" required">Required</div>                                                       | ids for mutation function                                                                          | [`BaseKey[]`](/core/interfaces.md#basekey)                                 |                                                              |
 | mutationMode                                                                                        | [Determines when mutations are executed](/guides-and-concepts/mutation-mode.md)                    | ` "pessimistic` \| `"optimistic` \| `"undoable"`                           | `"pessimistic"`\*                                            |
 | undoableTimeout                                                                                     | Duration to wait before executing the mutation when `mutationMode = "undoable"`                    | `number`                                                                   | `5000ms`\*                                                   |
 | onCancel                                                                                            | Callback that runs when undo button is clicked on `mutationMode = "undoable"`                      | `(cancelMutation: () => void) => void`                                     |                                                              |
@@ -170,6 +171,7 @@ After 7.5 seconds the mutation will be executed. The mutation can be cancelled w
 | errorNotification                                                                                   | Unsuccessful Mutation notification                                                                 | [`SuccessErrorNotification`](/core/interfaces.md#successerrornotification) | "Error when updating `resource` (status code: `statusCode`)" |
 | metaData                                                                                            | Metadata query for `dataProvider`                                                                  | [`MetaDataQuery`](/core/interfaces.md#metadataquery)                       | {}                                                           |
 | dataProviderName                                                                                    | If there is more than one `dataProvider`, you should use the `dataProviderName` that you will use. | `string`                                                                   | `default`                                                    |
+| invalidates                                                                                         | You can use it to manage the invalidations that will occur at the end of the mutation.             | `all`, `resourceAll`, `list`, `many`, `detail`, `false`                    | `["list", "many"]`                                           |
 
 > `*`: These props have default values in `RefineContext` and can also be set on **<[Refine](/core/components/refine-config.md)>** component. `useDeleteMany` will use what is passed to `<Refine>` as default but a local value will override it.
 
@@ -177,13 +179,15 @@ After 7.5 seconds the mutation will be executed. The mutation can be cancelled w
 
 ### Type Parameters
 
-| Property | Desription                                                                          | Type                                           | Default                                        |
-| -------- | ----------------------------------------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------- |
-| TData    | Result data of the mutation. Extends [`BaseRecord`](/core/interfaces.md#baserecord) | [`BaseRecord`](/core/interfaces.md#baserecord) | [`BaseRecord`](/core/interfaces.md#baserecord) |
-| TError   | Custom error object that extends [`HttpError`](/core/interfaces.md#httperror)       | [`HttpError`](/core/interfaces.md#httperror)   | [`HttpError`](/core/interfaces.md#httperror)   |
+| Property   | Desription                                                                          | Type                                           | Default                                        |
+| ---------- | ----------------------------------------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------- |
+| TData      | Result data of the mutation. Extends [`BaseRecord`](/core/interfaces.md#baserecord) | [`BaseRecord`](/core/interfaces.md#baserecord) | [`BaseRecord`](/core/interfaces.md#baserecord) |
+| TError     | Custom error object that extends [`HttpError`](/core/interfaces.md#httperror)       | [`HttpError`](/core/interfaces.md#httperror)   | [`HttpError`](/core/interfaces.md#httperror)   |
+| TVariables | Values for mutation function                                                        | `{}`                                           | `{}`                                           |
+
 
 ### Return value
 
-| Description                               | Type                                                                                                                                                                                     |
-| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Result of the `react-query`'s useMutation | [`UseMutationResult<`<br/>`{ data: TData },`<br/>`TError,`<br/>` { resource: string; ids: string[]; },`<br/>` DeleteContext>`](https://react-query.tanstack.com/reference/useMutation)\* |
+| Description                               | Type                                                                                                                                                                                      |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Result of the `react-query`'s useMutation | [`UseMutationResult<`<br/>`{ data: TData },`<br/>`TError,`<br/>` { resource: string; ids: BaseKey[]; },`<br/>` DeleteContext>`](https://react-query.tanstack.com/reference/useMutation)\* |

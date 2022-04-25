@@ -13,10 +13,11 @@ import {
     HttpError,
     ResourceRouterParams,
     UseFormProps as UseFormPropsCore,
+    BaseRecord,
+    LiveModeProps,
 } from "@pankod/refine-core";
 import { useForm, UseFormProps, UseFormReturnType } from "../useForm";
-import { BaseRecord, LiveModeProps } from "@pankod/refine-core/dist/interfaces";
-import { useModalFormFromSFReturnType } from "../../../../types/sunflower";
+import { useModalFormFromSFReturnType } from "../../../types/sunflower";
 
 type useModalFormConfig = {
     action: "show" | "edit" | "create" | "clone";
@@ -37,7 +38,7 @@ export type useModalFormProps<
     TError extends HttpError = HttpError,
     TVariables = {},
 > = UseFormPropsCore<TData, TError, TVariables> &
-    UseFormProps &
+    UseFormProps<TData, TError, TVariables> &
     UseModalFormConfigSF &
     useModalFormConfig &
     LiveModeProps;

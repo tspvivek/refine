@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button, Result, Typography, Space, Tooltip } from "antd";
 import { InfoCircleOutlined } from "@ant-design/icons";
 import {
@@ -7,7 +7,7 @@ import {
     useResourceWithRoute,
     useRouterContext,
 } from "@pankod/refine-core";
-import { ResourceErrorRouterParams } from "@pankod/refine-core/dist/interfaces";
+import { ResourceErrorRouterParams } from "@pankod/refine-core";
 
 const { Text } = Typography;
 
@@ -28,7 +28,7 @@ export const ErrorComponent: React.FC = () => {
     const params = useParams<ResourceErrorRouterParams>();
     const resource = useResourceWithRoute();
 
-    useLayoutEffect(() => {
+    useEffect(() => {
         if (params.resource) {
             const resourceFromRoute = resource(params.resource);
             if (

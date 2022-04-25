@@ -3,15 +3,17 @@ import { Button, ButtonProps } from "antd";
 import { PlusSquareOutlined } from "@ant-design/icons";
 import {
     useNavigation,
-    useRouterContext,
     useTranslate,
     useCan,
-    useResourceWithRoute,
-    ResourceRouterParams,
+    useResource,
 } from "@pankod/refine-core";
 
 export type CreateButtonProps = ButtonProps & {
+    /**
+     * @deprecated resourceName deprecated. Use resourceNameOrRouteName instead # https://github.com/pankod/refine/issues/1618
+     */
     resourceName?: string;
+    resourceNameOrRouteName?: string;
     hideText?: boolean;
     ignoreAccessControlProvider?: boolean;
 };
@@ -25,26 +27,21 @@ export type CreateButtonProps = ButtonProps & {
  */
 export const CreateButton: React.FC<CreateButtonProps> = ({
     resourceName: propResourceName,
+    resourceNameOrRouteName: propResourceNameOrRouteName,
     hideText = false,
     ignoreAccessControlProvider = false,
     children,
+    onClick,
     ...rest
 }) => {
-    const resourceWithRoute = useResourceWithRoute();
-
     const translate = useTranslate();
 
     const { create } = useNavigation();
 
-    const { useParams } = useRouterContext();
-
-    const { resource: routeResourceName } = useParams<ResourceRouterParams>();
-
-    const resource = resourceWithRoute(routeResourceName);
-
-    const resourceName = propResourceName ?? resource.name;
-
-    const onButtonClick = () => create(resourceName, "push");
+    const { resourceName, resource } = useResource({
+        resourceName: propResourceName,
+        resourceNameOrRouteName: propResourceNameOrRouteName,
+    });
 
     const { data } = useCan({
         resource: resourceName,
@@ -66,7 +63,11 @@ export const CreateButton: React.FC<CreateButtonProps> = ({
 
     return (
         <Button
-            onClick={onButtonClick}
+            onClick={(e): void =>
+                onClick
+                    ? onClick(e)
+                    : create(propResourceName ?? resource.route!, "push")
+            }
             icon={<PlusSquareOutlined />}
             disabled={data?.can === false}
             title={createButtonDisabledTitle()}

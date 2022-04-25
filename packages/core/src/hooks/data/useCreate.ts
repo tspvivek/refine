@@ -7,14 +7,15 @@ import {
     HttpError,
     SuccessErrorNotification,
     MetaDataQuery,
+    IQueryKeys,
 } from "../../interfaces";
 import {
     useTranslate,
     useCheckError,
-    useCacheQueries,
     usePublish,
     useHandleNotification,
     useDataProvider,
+    useInvalidate,
 } from "@hooks";
 
 type useCreateParams<TVariables> = {
@@ -22,6 +23,7 @@ type useCreateParams<TVariables> = {
     values: TVariables;
     metaData?: MetaDataQuery;
     dataProviderName?: string;
+    invalidates?: Array<keyof IQueryKeys>;
 } & SuccessErrorNotification;
 
 export type UseCreateReturnType<
@@ -55,10 +57,9 @@ export const useCreate = <
 >(): UseCreateReturnType<TData, TError, TVariables> => {
     const { mutate: checkError } = useCheckError();
     const dataProvider = useDataProvider();
+    const invalidateStore = useInvalidate();
 
-    const getAllQueries = useCacheQueries();
     const translate = useTranslate();
-    const queryClient = useQueryClient();
     const publish = usePublish();
     const handleNotification = useHandleNotification();
 
@@ -83,7 +84,12 @@ export const useCreate = <
         {
             onSuccess: (
                 data,
-                { resource, successNotification: successNotificationFromProp },
+                {
+                    resource,
+                    successNotification: successNotificationFromProp,
+                    dataProviderName,
+                    invalidates = ["list", "many"],
+                },
             ) => {
                 const resourceSingular = pluralize.singular(resource);
 
@@ -103,17 +109,17 @@ export const useCreate = <
                     type: "success",
                 });
 
-                getAllQueries(resource).forEach((query) => {
-                    queryClient.invalidateQueries(query.queryKey);
+                invalidateStore({
+                    resource,
+                    dataProviderName,
+                    invalidates,
                 });
 
                 publish?.({
                     channel: `resources/${resource}`,
                     type: "created",
                     payload: {
-                        ids: data.data?.id
-                            ? [data.data.id.toString()]
-                            : undefined,
+                        ids: data?.data?.id ? [data.data.id] : undefined,
                     },
                     date: new Date(),
                 });

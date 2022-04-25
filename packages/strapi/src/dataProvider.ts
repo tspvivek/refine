@@ -4,6 +4,7 @@ import {
     HttpError,
     CrudFilters,
     CrudSorting,
+    BaseKey,
 } from "@pankod/refine-core";
 import { stringify } from "query-string";
 
@@ -39,18 +40,37 @@ const generateSort = (sort?: CrudSorting) => {
 };
 
 const generateFilter = (filters?: CrudFilters) => {
-    const queryFilters: { [key: string]: string } = {};
+    let rawQuery = "";
+
     if (filters) {
-        filters.map(({ field, operator, value }) => {
-            if (operator === "eq") {
-                queryFilters[`${field}`] = value;
+        filters.map((filter) => {
+            if (filter.operator !== "or") {
+                const { field, operator, value } = filter;
+
+                if (operator === "eq") {
+                    rawQuery += `&${field}=${value}`;
+                } else {
+                    if (Array.isArray(value)) {
+                        value.map((val) => {
+                            rawQuery += `&[${field}_${operator}]=${val}`;
+                        });
+                    } else {
+                        rawQuery += `&[${field}_${operator}]=${value}`;
+                    }
+                }
             } else {
-                queryFilters[`${field}_${operator}`] = value;
+                const { value } = filter;
+
+                value.map((item, index) => {
+                    const { field, operator, value } = item;
+
+                    rawQuery += `&_where[_or][${index}][${field}_${operator}]=${value}`;
+                });
             }
         });
     }
 
-    return queryFilters;
+    return rawQuery;
 };
 
 export const DataProvider = (
@@ -73,10 +93,8 @@ export const DataProvider = (
         };
 
         const response = await Promise.all([
-            httpClient.get(
-                `${url}?${stringify(query)}&${stringify(queryFilters)}`,
-            ),
-            httpClient.get(`${url}/count?${stringify(queryFilters)}`),
+            httpClient.get(`${url}?${stringify(query)}&${queryFilters}`),
+            httpClient.get(`${url}/count?${queryFilters}`),
         ]);
 
         return {
@@ -88,7 +106,7 @@ export const DataProvider = (
     getMany: async ({ resource, ids }) => {
         const url = `${apiUrl}/${resource}`;
 
-        const query = ids.map((item: string) => `id_in=${item}`).join("&");
+        const query = ids.map((item: BaseKey) => `id_in=${item}`).join("&");
 
         const { data } = await httpClient.get(`${url}?${query}`);
 
@@ -185,7 +203,7 @@ export const DataProvider = (
 
         if (filters) {
             const filterQuery = generateFilter(filters);
-            requestUrl = `${requestUrl}&${stringify(filterQuery)}`;
+            requestUrl = `${requestUrl}&${filterQuery}`;
         }
 
         if (query) {

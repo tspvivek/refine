@@ -6,7 +6,6 @@ import {
     MutationCache,
     DefaultOptions,
 } from "react-query";
-
 import { ReactQueryDevtools } from "react-query/devtools";
 
 import { AuthContextProvider } from "@contexts/auth";
@@ -45,6 +44,7 @@ import {
     INotificationContext,
     IDataMultipleContextProvider,
 } from "../../../interfaces";
+import { routeGenerator } from "@definitions";
 
 interface QueryClientConfig {
     queryCache?: QueryCache;
@@ -132,10 +132,13 @@ export const Refine: React.FC<RefineProps> = ({
 
     resourcesFromProps?.map((resource) => {
         resources.push({
+            key: resource.key,
             name: resource.name,
             label: resource.options?.label,
             icon: resource.icon,
-            route: resource.options?.route ?? resource.name,
+            route:
+                resource.options?.route ??
+                routeGenerator(resource, resourcesFromProps),
             canCreate: !!resource.create,
             canEdit: !!resource.edit,
             canShow: !!resource.show,
@@ -145,6 +148,7 @@ export const Refine: React.FC<RefineProps> = ({
             list: resource.list,
             edit: resource.edit,
             options: resource.options,
+            parentName: resource.parentName,
         });
     });
 

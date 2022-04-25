@@ -11,7 +11,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [12.x]
+        node-version: [16.x]
 
     steps:
       - name: Workflow run cleanup action
@@ -59,7 +59,8 @@ jobs:
             --set ingress.annotations."kubernetes\.io/ingress\.class"=nginx \
             --set ingress.annotations."cert-manager\.io/issuer"=letsencrypt-prod \
             --set ingress.hosts[0].host=${{ env.domain }} \
-            --set ingress.hosts[0].paths[0]="/" \
+            --set ingress.hosts[0].paths[0].path="/" \
+            --set ingress.hosts[0].paths[0].pathType=ImplementationSpecific \
             --set ingress.tls[0].secretName=${{ env.domain }} \
             --set ingress.tls[0].hosts[0]=${{ env.domain }} \
         env:
@@ -114,7 +115,8 @@ jobs:
             --set ingress.annotations."kubernetes\.io/ingress\.class"=nginx \
             --set ingress.annotations."cert-manager\.io/issuer"=letsencrypt-prod \
             --set ingress.hosts[0].host=${{ env.domain }} \
-            --set ingress.hosts[0].paths[0]="/" \
+            --set ingress.hosts[0].paths[0].path="/" \
+            --set ingress.hosts[0].paths[0].pathType=ImplementationSpecific \
             --set ingress.tls[0].secretName=${{ env.domain }} \
             --set ingress.tls[0].hosts[0]=${{ env.domain }} \
         env:

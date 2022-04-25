@@ -3,29 +3,32 @@ import { useMutation, UseMutationResult, useQueryClient } from "react-query";
 import { ActionTypes } from "@contexts/undoableQueue";
 import {
     BaseRecord,
+    BaseKey,
     UpdateResponse,
-    QueryResponse,
     MutationMode,
-    Context as UpdateContext,
-    ContextQuery,
+    PrevContext as UpdateContext,
     HttpError,
     SuccessErrorNotification,
     MetaDataQuery,
+    PreviousQuery,
+    GetListResponse,
+    IQueryKeys,
 } from "../../interfaces";
 import pluralize from "pluralize";
 import {
     useMutationMode,
     useCancelNotification,
-    useCacheQueries,
     useTranslate,
     useCheckError,
     usePublish,
     useHandleNotification,
     useDataProvider,
+    useInvalidate,
 } from "@hooks";
+import { queryKeys } from "@definitions/helpers";
 
-type UpdateParams<TVariables> = {
-    id: string;
+export type UpdateParams<TVariables> = {
+    id: BaseKey;
     resource: string;
     mutationMode?: MutationMode;
     undoableTimeout?: number;
@@ -33,6 +36,7 @@ type UpdateParams<TVariables> = {
     values: TVariables;
     metaData?: MetaDataQuery;
     dataProviderName?: string;
+    invalidates?: Array<keyof IQueryKeys>;
 } & SuccessErrorNotification;
 
 export type UseUpdateReturnType<
@@ -43,7 +47,7 @@ export type UseUpdateReturnType<
     UpdateResponse<TData>,
     TError,
     UpdateParams<TVariables>,
-    UpdateContext
+    UpdateContext<TData>
 >;
 
 /**
@@ -75,14 +79,13 @@ export const useUpdate = <
     const publish = usePublish();
     const { notificationDispatch } = useCancelNotification();
     const handleNotification = useHandleNotification();
-
-    const getAllQueries = useCacheQueries();
+    const invalidateStore = useInvalidate();
 
     const mutation = useMutation<
         UpdateResponse<TData>,
         TError,
         UpdateParams<TVariables>,
-        UpdateContext
+        UpdateContext<TData>
     >(
         ({
             id,
@@ -148,107 +151,116 @@ export const useUpdate = <
             return updatePromise;
         },
         {
-            onMutate: async ({ resource, id, mutationMode, values }) => {
-                const previousQueries: ContextQuery[] = [];
+            onMutate: async ({
+                resource,
+                id,
+                mutationMode,
+                values,
+                dataProviderName,
+            }) => {
+                const queryKey = queryKeys(resource, dataProviderName);
 
-                const allQueries = getAllQueries(resource, id);
+                const previousQueries: PreviousQuery<TData>[] =
+                    queryClient.getQueriesData(queryKey.resourceAll);
 
                 const mutationModePropOrContext =
                     mutationMode ?? mutationModeContext;
 
-                for (const queryItem of allQueries) {
-                    const { queryKey } = queryItem;
-                    await queryClient.cancelQueries(queryKey, undefined, {
+                await queryClient.cancelQueries(
+                    queryKey.resourceAll,
+                    undefined,
+                    {
                         silent: true,
-                    });
+                    },
+                );
 
-                    const previousQuery =
-                        queryClient.getQueryData<QueryResponse<TData>>(
-                            queryKey,
-                        );
-
-                    if (!(mutationModePropOrContext === "pessimistic")) {
-                        if (previousQuery) {
-                            previousQueries.push({
-                                query: previousQuery,
-                                queryKey,
+                if (!(mutationModePropOrContext === "pessimistic")) {
+                    // Set the previous queries to the new ones:
+                    queryClient.setQueriesData(
+                        queryKey.list(),
+                        (previous?: GetListResponse<TData> | null) => {
+                            if (!previous) {
+                                return null;
+                            }
+                            const data = previous.data.map((record: TData) => {
+                                if (record.id?.toString() === id?.toString()) {
+                                    return {
+                                        id,
+                                        ...values,
+                                    } as unknown as TData;
+                                }
+                                return record;
                             });
 
-                            if (
-                                queryKey.includes(`resource/list/${resource}`)
-                            ) {
-                                const { data } = previousQuery;
+                            return {
+                                ...previous,
+                                data,
+                            };
+                        },
+                    );
 
-                                queryClient.setQueryData(queryKey, {
-                                    ...previousQuery,
-                                    data: data.map((record: TData) => {
-                                        if (
-                                            record.id?.toString() ===
-                                            id.toString()
-                                        ) {
-                                            return {
-                                                ...values,
-                                                id: id,
-                                            };
-                                        }
-                                        return record;
-                                    }),
-                                });
-                            } else {
-                                queryClient.setQueryData(queryKey, {
-                                    data: {
-                                        ...previousQuery.data,
-                                        ...values,
-                                    },
-                                });
+                    queryClient.setQueriesData(
+                        queryKey.many(),
+                        (previous?: GetListResponse<TData> | null) => {
+                            if (!previous) {
+                                return null;
                             }
-                        }
-                    }
+
+                            const data = previous.data.map((record: TData) => {
+                                if (record.id?.toString() === id?.toString()) {
+                                    record = {
+                                        id,
+                                        ...values,
+                                    } as unknown as TData;
+                                }
+                                return record;
+                            });
+                            return {
+                                ...previous,
+                                data,
+                            };
+                        },
+                    );
+
+                    queryClient.setQueriesData(
+                        queryKey.detail(id),
+                        (previous?: GetListResponse<TData> | null) => {
+                            if (!previous) {
+                                return null;
+                            }
+
+                            return {
+                                ...previous,
+                                data: {
+                                    ...previous.data,
+                                    ...values,
+                                },
+                            };
+                        },
+                    );
                 }
 
                 return {
-                    previousQueries: previousQueries,
+                    previousQueries,
+                    queryKey,
                 };
             },
-            onError: (
-                err: TError,
-                { id, resource, errorNotification },
-                context,
+            onSettled: (
+                _data,
+                _error,
+                {
+                    id,
+                    resource,
+                    dataProviderName,
+                    invalidates = ["list", "many", "detail"],
+                },
             ) => {
-                if (context) {
-                    for (const query of context.previousQueries) {
-                        queryClient.setQueryData(query.queryKey, query.query);
-                    }
-                }
-
-                if (err.message !== "mutationCancelled") {
-                    checkError?.(err);
-
-                    const resourceSingular = pluralize.singular(resource);
-
-                    handleNotification(errorNotification, {
-                        key: `${id}-${resource}-notification`,
-                        message: translate(
-                            "notifications.editError",
-                            {
-                                resource: translate(
-                                    `${resource}.${resource}`,
-                                    resourceSingular,
-                                ),
-                                statusCode: err.statusCode,
-                            },
-                            `Error when updating ${resourceSingular} (status code: ${err.statusCode})`,
-                        ),
-                        description: err.message,
-                        type: "error",
-                    });
-                }
-            },
-            onSettled: (_data, _error, { id, resource }) => {
-                const allQueries = getAllQueries(resource, id);
-                for (const query of allQueries) {
-                    queryClient.invalidateQueries(query.queryKey);
-                }
+                invalidateStore({
+                    resource,
+                    dataProviderName,
+                    invalidates,
+                    id,
+                });
 
                 notificationDispatch({
                     type: ActionTypes.REMOVE,
@@ -281,12 +293,46 @@ export const useUpdate = <
                     channel: `resources/${resource}`,
                     type: "updated",
                     payload: {
-                        ids: data.data?.id
-                            ? [data.data.id.toString()]
-                            : undefined,
+                        ids: data.data?.id ? [data.data.id] : undefined,
                     },
                     date: new Date(),
                 });
+            },
+            onError: (
+                err: TError,
+                { id, resource, errorNotification },
+                context,
+            ) => {
+                // set back the queries to the context:
+
+                if (context) {
+                    for (const query of context.previousQueries) {
+                        queryClient.setQueryData(query[0], query[1]);
+                    }
+                }
+
+                if (err.message !== "mutationCancelled") {
+                    checkError?.(err);
+
+                    const resourceSingular = pluralize.singular(resource);
+
+                    handleNotification(errorNotification, {
+                        key: `${id}-${resource}-notification`,
+                        message: translate(
+                            "notifications.editError",
+                            {
+                                resource: translate(
+                                    `${resource}.${resource}`,
+                                    resourceSingular,
+                                ),
+                                statusCode: err.statusCode,
+                            },
+                            `Error when updating ${resourceSingular} (status code: ${err.statusCode})`,
+                        ),
+                        description: err.message,
+                        type: "error",
+                    });
+                }
             },
         },
     );

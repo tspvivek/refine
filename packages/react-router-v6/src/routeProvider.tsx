@@ -15,21 +15,14 @@ import {
 } from "@pankod/refine-core";
 import { RefineRouteProps } from "./index";
 
-const ResourceComponent: React.FC = () => {
+const ResourceComponent: React.FC<{ route: string }> = ({ route }) => {
     const { catchAll } = useRefineContext();
     const { useParams } = useRouterContext();
     const { resources } = useResource();
 
-    const {
-        resource: routeResourceName,
-        action,
-        id,
-    } = useParams<ResourceRouterParams>();
+    const { action, id } = useParams<ResourceRouterParams>();
 
-    const resource = resources.find(
-        (res) =>
-            res.name === routeResourceName || res.route === routeResourceName,
-    );
+    const resource = resources.find((res) => res.route === route);
 
     if (resource) {
         const {
@@ -42,6 +35,7 @@ const ResourceComponent: React.FC = () => {
             canEdit,
             canShow,
             canDelete,
+            options,
         } = resource;
 
         const List = list ?? (() => null);
@@ -64,26 +58,10 @@ const ResourceComponent: React.FC = () => {
                                 canEdit={canEdit}
                                 canDelete={canDelete}
                                 canShow={canShow}
+                                options={options}
                             />
                         </CanAccess>
                     );
-                case undefined:
-                    return (
-                        <CanAccess
-                            resource={name}
-                            action="list"
-                            fallback={catchAll ?? <ErrorComponent />}
-                        >
-                            <List
-                                name={name}
-                                canCreate={canCreate}
-                                canEdit={canEdit}
-                                canDelete={canDelete}
-                                canShow={canShow}
-                            />
-                        </CanAccess>
-                    );
-
                 case "create":
                 case "clone":
                     return (
@@ -98,6 +76,7 @@ const ResourceComponent: React.FC = () => {
                                 canEdit={canEdit}
                                 canDelete={canDelete}
                                 canShow={canShow}
+                                options={options}
                             />
                         </CanAccess>
                     );
@@ -116,6 +95,7 @@ const ResourceComponent: React.FC = () => {
                                 canEdit={canEdit}
                                 canDelete={canDelete}
                                 canShow={canShow}
+                                options={options}
                             />
                         </CanAccess>
                     );
@@ -134,9 +114,12 @@ const ResourceComponent: React.FC = () => {
                                 canEdit={canEdit}
                                 canDelete={canDelete}
                                 canShow={canShow}
+                                options={options}
                             />
                         </CanAccess>
                     );
+                default:
+                    return <>{catchAll ?? <ErrorComponent />}</>;
             }
         };
 
@@ -159,7 +142,7 @@ export const RouteProvider = () => {
     if (isLoading) {
         return (
             <Routes>
-                <Route />
+                <Route path="*" element={null} />
             </Routes>
         );
     }
@@ -170,6 +153,29 @@ export const RouteProvider = () => {
 
         return <Navigate to={`/login?to=${encodeURIComponent(toURL)}`} />;
     };
+
+    const resourceRoutes: JSX.Element[] = [];
+
+    resources.map((resource) => {
+        const route = (
+            <Route
+                key={`${resource.route}`}
+                path={`${resource.route}`}
+                element={<ResourceComponent route={resource.route!} />}
+            >
+                <Route
+                    path=":action"
+                    element={<ResourceComponent route={resource.route!} />}
+                >
+                    <Route
+                        path=":id"
+                        element={<ResourceComponent route={resource.route!} />}
+                    />
+                </Route>
+            </Route>
+        );
+        resourceRoutes.push(route);
+    });
 
     const renderAuthorized = () => (
         <Routes>
@@ -211,21 +217,26 @@ export const RouteProvider = () => {
                                 <DashboardPage />
                             </CanAccess>
                         ) : (
-                            <Navigate to={`/${resources[0].route}`} />
+                            <Navigate
+                                to={`/${
+                                    resources.find((p) => p.list !== undefined)
+                                        ?.route
+                                }`}
+                            />
                         )
                     }
                 />
-                <Route path=":resource" element={<ResourceComponent />}>
-                    <Route path=":action" element={<ResourceComponent />}>
-                        <Route path=":id" element={<ResourceComponent />} />
-                    </Route>
-                </Route>
+                {...[...(resourceRoutes || [])]}
+                <Route path="*" element={<ResourceComponent route="" />} />
             </Route>
         </Routes>
     );
 
     const renderUnauthorized = () => (
         <Routes>
+            {[...(customRoutes || [])].map((route, i) => (
+                <Route key={`custom-route-${i}`} {...route} />
+            ))}
             <Route
                 path="/"
                 element={LoginPage ? <LoginPage /> : <DefaultLoginPage />}
@@ -234,9 +245,6 @@ export const RouteProvider = () => {
                 path="/login"
                 element={LoginPage ? <LoginPage /> : <DefaultLoginPage />}
             />
-            {[...(customRoutes || [])].map((route, i) => (
-                <Route key={`custom-route-${i}`} {...route} />
-            ))}
             <Route path="*" element={<CustomPathAfterLogin />} />
         </Routes>
     );

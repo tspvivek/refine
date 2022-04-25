@@ -20,12 +20,19 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           registry-url: https://registry.npmjs.org/
-      - run: |
+
+      - name: npm install
+        run: |
           npm ci
           npm run bootstrap
+      - name: build & lint
+        run: |
           npm run build
           npm run lint
-          npm test
+      - name: test
+        run: npm run test
+      - name: publish alpha channel
+        run: |
           npm run lerna publish from-package -- --yes --dist-tag alpha
         env:
           NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
@@ -74,7 +81,8 @@ jobs:
             --set ingress.annotations."kubernetes\.io/ingress\.class"=nginx \
             --set ingress.annotations."cert-manager\.io/issuer"=letsencrypt-prod \
             --set ingress.hosts[0].host=${{ env.domain }} \
-            --set ingress.hosts[0].paths[0]="/" \
+            --set ingress.hosts[0].paths[0].path="/" \
+            --set ingress.hosts[0].paths[0].pathType=ImplementationSpecific \
             --set ingress.tls[0].secretName=${{ env.domain }} \
             --set ingress.tls[0].hosts[0]=${{ env.domain }} \
         env:
@@ -131,7 +139,8 @@ jobs:
             --set ingress.annotations."kubernetes\.io/ingress\.class"=nginx \
             --set ingress.annotations."cert-manager\.io/issuer"=letsencrypt-prod \
             --set ingress.hosts[0].host=${{ env.domain }} \
-            --set ingress.hosts[0].paths[0]="/" \
+            --set ingress.hosts[0].paths[0].path="/" \
+            --set ingress.hosts[0].paths[0].pathType=ImplementationSpecific \
             --set ingress.tls[0].secretName=${{ env.domain }} \
             --set ingress.tls[0].hosts[0]=${{ env.domain }} \
         env:
@@ -189,6 +198,7 @@ jobs:
             --set ingress.annotations."cert-manager\.io/issuer"=letsencrypt-prod \
             --set ingress.hosts[0].host=${{ env.domain }} \
             --set ingress.hosts[0].paths[0].path="/" \
+            --set ingress.hosts[0].paths[0].pathType=ImplementationSpecific \
             --set ingress.tls[0].secretName=${{ env.domain }} \
             --set ingress.tls[0].hosts[0]=${{ env.domain }} \
         env:

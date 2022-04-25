@@ -19,7 +19,7 @@ An example use in a custom page may look like this:
 // highlight-next-line
 import { Refine, Authenticated, LayoutWrapper } from "@pankod/refine-core";
 
-import routerProvider from "@pankod/refine-react-router";
+import routerProvider from "@pankod/refine-react-router-v6";
 import dataProvider from "@pankod/refine-simple-rest";
 import "@pankod/refine/dist/styles.min.css";
 
@@ -71,7 +71,6 @@ In this example, we hide the left sider only for this page. The rest should look
 
 | Property      | Description                                           | Type       | Default |
 | ------------- | ----------------------------------------------------- | ---------- | ------- |
-| dashboard     |                                                       | `boolean`  | \*      |
 | Layout        | Outer component that renders other components         | `React.FC` | \*      |
 | Sider         | [Custom sider to use][refine#sider]                   | `React.FC` | \*      |
 | Header        | [Custom header to use][refine#header]                 | `React.FC` | \*      |

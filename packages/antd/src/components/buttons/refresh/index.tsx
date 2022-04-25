@@ -3,16 +3,19 @@ import { Button, ButtonProps } from "antd";
 import { RedoOutlined } from "@ant-design/icons";
 import {
     useOne,
-    useResourceWithRoute,
-    useRouterContext,
     useTranslate,
     MetaDataQuery,
-    ResourceRouterParams,
+    BaseKey,
+    useResource,
 } from "@pankod/refine-core";
 
 export type RefreshButtonProps = ButtonProps & {
+    /**
+     * @deprecated resourceName deprecated. Use resourceNameOrRouteName instead # https://github.com/pankod/refine/issues/1618
+     */
     resourceName?: string;
-    recordItemId?: string;
+    resourceNameOrRouteName?: string;
+    recordItemId?: BaseKey;
     hideText?: boolean;
     metaData?: MetaDataQuery;
     dataProviderName?: string;
@@ -26,30 +29,26 @@ export type RefreshButtonProps = ButtonProps & {
  */
 export const RefreshButton: React.FC<RefreshButtonProps> = ({
     resourceName: propResourceName,
+    resourceNameOrRouteName: propResourceNameOrRouteName,
     recordItemId,
     hideText = false,
     metaData,
     dataProviderName,
     children,
+    onClick,
     ...rest
 }) => {
     const translate = useTranslate();
-    const resourceWithRoute = useResourceWithRoute();
 
-    const { useParams } = useRouterContext();
-
-    const { resource: routeResourceName, id: idFromRoute } =
-        useParams<ResourceRouterParams>();
-
-    const resourceName = propResourceName ?? routeResourceName;
-
-    const resource = resourceWithRoute(resourceName);
-
-    const id = decodeURIComponent(recordItemId ?? idFromRoute);
+    const { resourceName, id } = useResource({
+        resourceName: propResourceName,
+        resourceNameOrRouteName: propResourceNameOrRouteName,
+        recordItemId,
+    });
 
     const { refetch, isFetching } = useOne({
-        resource: resource.name,
-        id,
+        resource: resourceName,
+        id: id ?? "",
         queryOptions: {
             enabled: false,
         },
@@ -60,8 +59,8 @@ export const RefreshButton: React.FC<RefreshButtonProps> = ({
 
     return (
         <Button
+            onClick={(e) => (onClick ? onClick(e) : refetch())}
             icon={<RedoOutlined spin={isFetching} />}
-            onClick={() => refetch()}
             {...rest}
         >
             {!hideText && (children ?? translate("buttons.refresh", "Refresh"))}

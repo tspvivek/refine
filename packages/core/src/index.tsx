@@ -7,6 +7,7 @@ export {
     IDataContextProvider as DataProvider,
     ILiveContext as LiveProvider,
     LiveEvent,
+    IResourceContext as ResourceProvider,
     ITranslationContext as TranslationProvider,
     IAccessControlContext as AccessControlProvider,
     INotificationContext as NotificationProvider,
@@ -25,6 +26,7 @@ export {
     CrudOperators,
     CrudSorting,
     CrudSort,
+    SortOrder,
     GetListResponse,
     GetOneResponse,
     GetManyResponse,
@@ -63,6 +65,8 @@ export {
     setInitialFilters,
     unionSorters,
     setInitialSorters,
+    getDefaultFilter,
+    getDefaultSortOrder,
 } from "./definitions/table";
 export {
     userFriendlyResourceName,
